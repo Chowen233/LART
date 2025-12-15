@@ -26,13 +26,13 @@ void write_color(const color & pixel_color, unsigned char& rbyte, unsigned char&
     
     // Translate the [0,1] component values to the byte range [0,255].
     static const interval intensity(0.000, 0.999);
-    /*rbyte = unsigned char(256 * intensity.clamp(pixel_color.x()));
-    gbyte = unsigned char(256 * intensity.clamp(pixel_color.y()));
-    bbyte = unsigned char(256 * intensity.clamp(pixel_color.z()));*/
+    rbyte = unsigned char(256 * intensity.clamp(r));
+    gbyte = unsigned char(256 * intensity.clamp(g));
+    bbyte = unsigned char(256 * intensity.clamp(b));
     
-    rbyte = unsigned char(255.999 * r);
+    /*rbyte = unsigned char(255.999 * r);
     gbyte = unsigned char(255.999 * g);
-    bbyte = unsigned char(255.999 * b);
+    bbyte = unsigned char(255.999 * b);*/
     
     // Write out the pixel color components.
 }

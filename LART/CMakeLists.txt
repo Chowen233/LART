@@ -3,10 +3,15 @@
 #
 
 # 将源代码添加到此项目的可执行文件。
-add_executable (LART "LART.cpp" "LART.h" "vec3.h" "color.h" "ray.h" "hittable.h" "sphere.h" "hittable_list.h" "interval.h" "camara.h" "material.h")
+add_executable (LART "LART.cpp" "LART.h" "vec3.h" "color.h" "ray.h" "hittable.h" "sphere.h" "hittable_list.h" "interval.h" "camara.h" "material.h" "aabb.h" "quad.h" "obj_loader.h")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET LART PROPERTY CXX_STANDARD 20)
 endif()
 
 # TODO: 如有需要，请添加测试并安装目标。
+# OpenMP
+find_package(OpenMP REQUIRED)
+
+# 将 OpenMP 链接到目标
+target_link_libraries(LART PRIVATE OpenMP::OpenMP_CXX)
