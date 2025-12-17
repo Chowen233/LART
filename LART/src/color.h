@@ -31,9 +31,9 @@ void write_color(const color& pixel_color, std::vector<unsigned char>& image, in
     image[idx + 1] = unsigned char(256 * intensity.clamp(g));
     image[idx + 2] = unsigned char(256 * intensity.clamp(b));
     
-    rbyte = unsigned char(255.999 * r);
+    /*rbyte = unsigned char(255.999 * r);
     gbyte = unsigned char(255.999 * g);
-    bbyte = unsigned char(255.999 * b);
+    bbyte = unsigned char(255.999 * b);*/
     
     // Write out the pixel color components.
 }
