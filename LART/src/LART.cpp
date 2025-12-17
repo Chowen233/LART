@@ -232,9 +232,9 @@ void cornell_box1() {
     camera cam;
 
     cam.aspect_ratio = 1.0;
-    cam.image_width = 500;
-    cam.samples_per_pixel = 10;
-    cam.max_depth = 10;
+    cam.image_width = 4000;
+    cam.samples_per_pixel = 200;
+    cam.max_depth = 15;
     cam.background = color(0, 0, 0);
 
     cam.vfov = 40;

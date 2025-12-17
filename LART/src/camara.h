@@ -4,12 +4,14 @@
 #include "hittable.h"
 #include "material.h"
 
+#include "OpenImageDenoise/oidn.h"
+
 #include <vector>
 #include <chrono>
 #include <omp.h>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
+#include "external/stb_image_write.h"
 
 class camera {
   public:
@@ -32,7 +34,14 @@ class camera {
     void render(const hittable& world) {
         initialize();
 
-		std::vector<unsigned char> image(image_width * image_height * 3);
+        int pixel_count = image_width * image_height;
+        std::vector<unsigned char> image_color(pixel_count * 3);
+        std::vector<unsigned char> image_albedo(pixel_count * 3);
+        std::vector<unsigned char> image_normal(pixel_count * 3);
+
+        std::vector<float> color_buffer(pixel_count * 3);
+        std::vector<float> albedo_buffer(pixel_count * 3);
+        std::vector<float> normal_buffer(pixel_count * 3);
 
         auto start = std::chrono::high_resolution_clock::now();
 
@@ -42,20 +51,41 @@ class camera {
         const std::string reset = "\033[0m";   // 重置颜色
         const std::string cursor = "\033[1F";   // 移动光标
 
-        #pragma omp parallel for schedule(dynamic)
-		for (int j = 0; j < image_height; j++) {
-			//std::clog << "\rScanlines remaining: " << (image_height - j) << ' ' << std::flush;
-                
-			for (int i = 0; i < image_width; i++) {
+#pragma omp parallel for schedule(dynamic)
+        for (int j = 0; j < image_height; j++) {
+            //std::clog << "\rScanlines remaining: " << (image_height - j) << ' ' << std::flush;
+
+            for (int i = 0; i < image_width; i++) {
                 color pixel_color(0, 0, 0);
+                color pixel_albedo(0, 0, 0);
+                color pixel_normal(0, 0, 0);
                 for (int sample = 0; sample < samples_per_pixel; sample++) {
                     ray r = get_ray(i, j);
                     pixel_color += ray_color(r, max_depth, world);
+                    auto [albedo, normal] = ray_first_hit(r, world);
+                    pixel_albedo += albedo;
+                    pixel_normal += normal;
                 }
+                int idx = (j * image_width + i) * 3;
 
-                int pixel_count = (j * image_width + i) * 3;
-				write_color(pixel_samples_scale * pixel_color, image[pixel_count + 0], image[pixel_count + 1], image[pixel_count + 2]);
-			}
+                color_buffer[idx] = pixel_samples_scale * pixel_color[0];
+                color_buffer[idx + 1] = pixel_samples_scale * pixel_color[1];
+                color_buffer[idx + 2] = pixel_samples_scale * pixel_color[2];
+
+                albedo_buffer[idx] = pixel_samples_scale * pixel_albedo[0];
+                albedo_buffer[idx + 1] = pixel_samples_scale * pixel_albedo[1];
+                albedo_buffer[idx + 2] = pixel_samples_scale * pixel_albedo[2];
+
+                normal_buffer[idx] = pixel_samples_scale * (0.5 * pixel_normal[0] + 0.5);
+                normal_buffer[idx + 1] = pixel_samples_scale * (0.5 * pixel_normal[1] + 0.5);
+                normal_buffer[idx + 2] = pixel_samples_scale * (0.5 * pixel_normal[2] + 0.5);
+
+                //write_color(pixel_samples_scale * pixel_color, image[idx + 0], image[idx + 1], image[idx + 2]);
+
+                write_color(pixel_samples_scale * pixel_color, image_color[idx + 0], image_color[idx + 1], image_color[idx + 2]);
+                write_color(pixel_samples_scale * pixel_albedo, image_albedo[idx + 0], image_albedo[idx + 1], image_albedo[idx + 2]);
+                write_color(pixel_samples_scale * (0.5 * pixel_normal + color(0.5, 0.5, 0.5)), image_normal[idx + 0], image_normal[idx + 1], image_normal[idx + 2]);
+            }
 
             progress++;
 
@@ -94,7 +124,7 @@ class camera {
                 if (m > 0) tss << m << "m ";
                 tss << s << "s remaining         ";
                 return tss.str();
-            };
+                };
 
             oss << fmt_time(remaining_sec);
 
@@ -107,18 +137,77 @@ class camera {
 
         auto end = std::chrono::high_resolution_clock::now();
         auto total = std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
-            
+
         std::clog << cursor << "\rRendering: [" << green << bold;
         for (int i = 0; i < 50; ++i) std::clog << '=';
         std::clog << reset << "] 100% Done.\nTotal time: " << int(total.count()) << "s          \n";
 
-		std::string filename = "image.png";
-		if (stbi_write_png(filename.c_str(), image_width, image_height, 3, image.data(), image_width * 3)) {
-			std::cout << "\nWrote image.png\n";
-		}
-		else {
-			std::cout << "\nFailed to write image.png\n";
-		}
+        std::string filename = "image_color.png";
+        if (stbi_write_png(filename.c_str(), image_width, image_height, 3, image_color.data(), image_width * 3)) {
+            std::cout << "\nWrote image_color.png\n";
+        }
+        else {
+            std::cout << "\nFailed to write image_color.png\n";
+        }
+
+        filename = "image_albedo.png";
+        if (stbi_write_png(filename.c_str(), image_width, image_height, 3, image_albedo.data(), image_width * 3)) {
+            std::cout << "\nWrote image_albedo.png\n";
+        }
+        else {
+            std::cout << "\nFailed to write image_normal.png\n";
+        }
+
+        filename = "image_normal.png";
+        if (stbi_write_png(filename.c_str(), image_width, image_height, 3, image_normal.data(), image_width * 3)) {
+            std::cout << "\nWrote image_normal.png\n";
+        }
+        else {
+            std::cout << "\nFailed to write image_normal.png\n";
+        }
+
+        // 假设你已经将图像渲染到了 std::vector<float> color, albedo, normal 中
+        // 每个 vector 的大小是 width * height * 3 (RGB)
+
+        OIDNDevice device = oidnNewDevice(OIDN_DEVICE_TYPE_DEFAULT);
+        oidnCommitDevice(device);
+
+        OIDNFilter filter = oidnNewFilter(device, "RT"); // 使用 RT 过滤器
+
+        // 设置颜色缓冲区（输入和输出可以是同一个）
+        oidnSetSharedFilterImage(filter, "color", color_buffer.data(), OIDN_FORMAT_FLOAT3, image_width, image_height, 0, 0, 0);
+        oidnSetSharedFilterImage(filter, "output", color_buffer.data(), OIDN_FORMAT_FLOAT3, image_width, image_height, 0, 0, 0);
+        // 设置辅助缓冲区
+        oidnSetSharedFilterImage(filter, "albedo", albedo_buffer.data(), OIDN_FORMAT_FLOAT3, image_width, image_height, 0, 0, 0);
+        oidnSetSharedFilterImage(filter, "normal", normal_buffer.data(), OIDN_FORMAT_FLOAT3, image_width, image_height, 0, 0, 0);
+
+        oidnCommitFilter(filter);
+        oidnExecuteFilter(filter);
+
+        // 检查错误
+        const char* error;
+        if (oidnGetDeviceError(device, &error) != OIDN_ERROR_NONE)
+            std::cerr << "Denoiser Error: " << error << std::endl;
+
+        // 清理
+        oidnReleaseFilter(filter);
+        oidnReleaseDevice(device);
+
+        // 此时 color 中的数据已经被降噪后的结果覆盖
+
+        for (int i = 0; i < image_width * image_height; ++i) {
+            int idx = i * 3;
+            color pixel_color(color_buffer[idx], color_buffer[idx + 1], color_buffer[idx + 2]);
+            write_color(pixel_color, image_color[idx], image_color[idx + 1], image_color[idx + 2]);
+        }
+
+        filename = "image.png";
+        if (stbi_write_png(filename.c_str(), image_width, image_height, 3, image_color.data(), image_width * 3)) {
+            std::cout << "\nWrote image.png\n";
+        }
+        else {
+            std::cout << "\nFailed to write image.png\n";
+        }
     }
 
   private:
@@ -229,6 +318,17 @@ class camera {
         auto a = 0.5 * (unit_direction.y() + 1.0);
         //return (1.0 - a) * color(1.0, 1.0, 1.0) + a * color(0.5, 0.7, 1.0);
         return color(1, 1, 1);*/
+    }
+
+    //get albedo normal
+    std::pair<color, vec3> ray_first_hit(const ray& r, const hittable& world) const {
+
+        hit_record rec;
+
+        if (world.hit(r, interval(0.001, infinity), rec)) {
+            return { rec.mat->get_albedo(), rec.normal };
+        }
+        return { background, vec3(0, 0, 1) };
     }
 };
 
