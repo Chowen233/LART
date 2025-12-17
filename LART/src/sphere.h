@@ -5,8 +5,10 @@
 
 class sphere : public hittable {
     public:
-        sphere(const point3& center, double radius, shared_ptr<material> mat)
-            : center(center), radius(std::fmax(0, radius)), mat(mat) {
+        sphere(const point3& static_center, double radius, shared_ptr<material> mat)
+            : center(static_center), radius(std::fmax(0, radius)), mat(mat) {
+            auto rvec = vec3(radius, radius, radius);
+            bbox = aabb(static_center - rvec, static_center + rvec);
         }
 
         bool hit(const ray& r, interval ray_t, hit_record& rec) const override {
@@ -38,10 +40,13 @@ class sphere : public hittable {
             return true;
         }
 
+        aabb bounding_box() const override { return bbox; }
+
     private:
         point3 center;
         double radius;
         shared_ptr<material> mat;
+        aabb bbox;
 };
 
 #endif
