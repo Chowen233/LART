@@ -9,6 +9,7 @@
   
 ## About The Project
 纯C++编写的光线追踪渲染引擎
+<img width="4000" height="4000" alt="img" src="https://github.com/user-attachments/assets/50f2808a-e449-4490-9dc3-88f67c44d3bd">
 
 ### Built With
 This project is built with following third parties.
