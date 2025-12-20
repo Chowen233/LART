@@ -24,9 +24,9 @@ This project is built with following third parties.
 
  I build this project on Windows platform. Please make sure your system is equipped with the following softwares.  
 
-- [cmake](https://cmake.org/)：at least version 3.5
+- [cmake](https://cmake.org/)：at least version 3.12
 
-* Microsoft visual studio 2017 or 2019
+* Microsoft visual studio 2026
   
 
 ### Installation
@@ -35,7 +35,7 @@ Please compile the project for **x64 platform**.
 
 1. Clone the repo
    ```sh
-   git clone --recurse-submodules https://github.com/ZeusYang/Aurora.git
+   git clone --recurse-submodules https://github.com/Chowen233/LART.git
    ```
    
 2. Use cmake to build the project：
