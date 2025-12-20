@@ -6,8 +6,10 @@
 <p align="center">
     Linear Algebra-based Ray Tracing
   <br />
-  项目简介
-  纯C++编写的光线追踪渲染引擎
+  
+## About The Project
+纯C++编写的光线追踪渲染引擎
+
 ### Built With
 This project is built with following third parties.
 * [stb_image](https://github.com/nothings/stb) for image I/O
