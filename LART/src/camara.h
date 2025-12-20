@@ -32,19 +32,17 @@ class camera {
     double defocus_angle = 0;  // Variation angle of rays through each pixel
     double focus_dist = 10;    // Distance from camera lookfrom point to plane of perfect focus
 
-    int    progress = 0;
-
     void render(const hittable& world) {
         initialize();
 
-        int pixel_count = image_width * image_height;
-        std::vector<unsigned char> image_color(pixel_count * 3);
-        std::vector<unsigned char> image_albedo(pixel_count * 3);
-        std::vector<unsigned char> image_normal(pixel_count * 3);
+        int pixel_cnt = image_width * image_height;
+        std::vector<unsigned char> image_color(pixel_cnt * 3);
+        std::vector<unsigned char> image_albedo(pixel_cnt * 3);
+        std::vector<unsigned char> image_normal(pixel_cnt * 3);
 
-        std::vector<float> color_buffer(pixel_count * 3);
-        std::vector<float> albedo_buffer(pixel_count * 3);
-        std::vector<float> normal_buffer(pixel_count * 3);
+        std::vector<float> color_buffer(pixel_cnt * 3);
+        std::vector<float> albedo_buffer(pixel_cnt * 3);
+        std::vector<float> normal_buffer(pixel_cnt * 3);
 
         auto start = std::chrono::high_resolution_clock::now();
 
@@ -57,7 +55,7 @@ class camera {
 #pragma omp parallel for schedule(dynamic)
         for (int j = 0; j < image_height; j++) {
             for (int i = 0; i < image_width; i++) {
-                color pixel_color(0, 0, 0);
+                color pixel_color (0, 0, 0);
                 color pixel_albedo(0, 0, 0);
                 color pixel_normal(0, 0, 0);
 
@@ -67,33 +65,52 @@ class camera {
                     pixel_albedo += albedo;
                     pixel_normal += normal;
                 }
-                int sample_count = max_samples_per_pixel;
+
+                int sample_cnt = 0;
+
                 for (int sample = 0; sample < max_samples_per_pixel; sample++) {
-                    if (sample + 1 > min_samples_per_pixel &&
-                        ( pixel_color[0] != background[0]
-                        || pixel_color[1] != background[1]
-                        || pixel_color[2] != background[2] )
-                        ) {
-                        sample_count = sample + 1;
-                        break;
-                    }
                     ray r = get_ray(i, j);
-                    pixel_color += ray_color(r, max_depth, world);
+                    color color_tmp = ray_color(r, max_depth, world);
+                    /*if (color_tmp[0] > 0.000001 ||
+                        color_tmp[1] > 0.000001 ||
+                        color_tmp[2] > 0.000001) {
+                        if (++sample_cnt >= min_samples_per_pixel) {
+                            total_sample_cnt += sample;
+                            break;
+                        }
+                    }*/
+                    if (color_tmp[0] != 0 ||
+                        color_tmp[1] != 0 ||
+                        color_tmp[2] != 0) {
+                        pixel_color += color_tmp;
+                        if (++sample_cnt >= min_samples_per_pixel) {
+                            total_sample_cnt += sample + 1;
+                            break;
+                        }
+                    }
+                }
+
+                //sample_cnt = sample_cnt == 0 ? 1 : sample_cnt;
+
+                if (sample_cnt < min_samples_per_pixel) {
+                    if (sample_cnt == 0)
+                        sample_cnt = 1;
+                    total_sample_cnt += max_samples_per_pixel;
                 }
 
                 int idx = (j * image_width + i) * 3;
 
                 auto fill_buffer = [&](std::vector<float>& buffer, color pixel) {
-                    buffer[idx] = pixel[0];
+                    buffer[idx]     = pixel[0];
                     buffer[idx + 1] = pixel[1];
                     buffer[idx + 2] = pixel[2];
                 };
 
-                fill_buffer(color_buffer, 1.0 / sample_count * pixel_color);
+                fill_buffer(color_buffer, 1.0 / sample_cnt * pixel_color);
                 fill_buffer(albedo_buffer, pixel_samples_scale * pixel_albedo);
                 fill_buffer(normal_buffer, pixel_samples_scale * (0.5 * pixel_normal + color(0.5, 0.5, 0.5)));
 
-                write_color(1.0 / sample_count * pixel_color, image_color, idx);
+                write_color(1.0 / sample_cnt * pixel_color, image_color, idx);
                 write_color(pixel_samples_scale * pixel_albedo, image_albedo, idx);
                 write_color(pixel_samples_scale * (0.5 * pixel_normal + color(0.5, 0.5, 0.5)), image_normal, idx);
             }
@@ -153,6 +170,8 @@ class camera {
         for (int i = 0; i < 50; ++i) std::clog << '=';
         std::clog << reset << "] 100% Done.\nTotal time: " << int(total.count()) << "s          \n";
 
+        std::clog << "average sample count = " << 1.0 * total_sample_cnt / pixel_cnt << "\n";
+
         write_png("image_color.png", image_color);
         write_png("image_albedo.png", image_albedo);
         write_png("image_normal.png", image_normal);
@@ -204,6 +223,9 @@ class camera {
     vec3   u, v, w;              // Camera frame basis vectors
     vec3   defocus_disk_u;       // Defocus disk horizontal radius
     vec3   defocus_disk_v;       // Defocus disk vertical radius
+
+    int    progress = 0;
+    long long total_sample_cnt = 0;
 
     void initialize() {
         image_height = int(image_width / aspect_ratio);

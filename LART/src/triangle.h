@@ -19,7 +19,6 @@ class triangle : public hittable {
 
     bool hit(const ray& r, interval ray_t, hit_record& rec) const override {
         auto P = cross(r.direction(), E2);
-
         double det = dot(E1, P);
 
         if (std::fabs(det) < 1e-8)
@@ -27,18 +26,19 @@ class triangle : public hittable {
 
         double invDet = 1.0 / det;
         auto T = r.origin() - v0;
-        auto Q = cross(T, E1);
-        auto t = dot(E2, Q) * invDet;
-
-        if (!ray_t.contains(t))
-            return false;
-
+        
         auto u = dot(T, P) * invDet;
         if (u < 0.0 || u > 1.0)
             return false;
 
+        auto Q = cross(T, E1);
         auto v = dot(r.direction(), Q) * invDet;
         if (v < 0.0 || u + v > 1.0)
+            return false;
+
+        auto t = dot(E2, Q) * invDet;
+
+        if (!ray_t.contains(t))
             return false;
 
         // Ray hits the 2D shape; set the rest of the hit record and return true.

@@ -200,7 +200,7 @@ void cornell_box_bunny() {
     auto pink  = make_shared<lambertian>(color(.99, .75, .80));
     auto light = make_shared<diffuse_light>(color(15, 15, 15));
     auto glass = make_shared<dielectric>(1.5);
-    auto blue_metal = make_shared<metal>(color(.54, .81, .94), 0.7);
+    auto blue_metal = make_shared<metal>(color(.54, .81, .94), 0.5);
 
     world.add(make_shared<quad>(point3(555, 0, 0), vec3(0, 555, 0), vec3(0, 0, 555), green));
     world.add(make_shared<quad>(point3(0, 0, 0), vec3(0, 555, 0), vec3(0, 0, 555), red));
@@ -213,7 +213,7 @@ void cornell_box_bunny() {
 
     //world.add(make_shared<triangle>(point3(200, 180, 100), point3(150, 150, 80), point3(250, 150, 80), glass));
 
-    shared_ptr<hittable> bunny = parseOBJ("./models/bunny.obj", pink, 1600);
+    shared_ptr<hittable> bunny = parseOBJ("./models/bunny_reduced_2x.obj", pink, 1600);
     bunny = make_shared<rotate_y>(bunny, 180);
     bunny = make_shared<translate>(bunny, vec3(160, -60, 230));
     world.add(bunny);
@@ -233,12 +233,64 @@ void cornell_box_bunny() {
     camera cam;
 
     cam.aspect_ratio = 1.0;
-    cam.image_width = 500;
-    cam.samples_per_pixel = 20;
-    cam.max_samples_per_pixel = 200;
-    cam.min_samples_per_pixel = 20;
+    cam.image_width = 4000;
+    cam.samples_per_pixel = 50;
+    cam.max_samples_per_pixel = 600;
+    cam.min_samples_per_pixel = 300;
     cam.max_depth = 8;
-    cam.background = color(0, 0, 0);
+    cam.background = color(0.01, 0.01, 0.01);
+
+    cam.vfov = 40;
+    cam.lookfrom = point3(278, 278, -760);
+    cam.lookat = point3(278, 278, 0);
+    cam.vup = vec3(0, 1, 0);
+
+    cam.defocus_angle = 0;
+
+    cam.render(world);
+}
+
+void cornell_box_bunny_demo() {
+    hittable_list world;
+
+    auto red = make_shared<lambertian>(color(.65, .05, .05));
+    auto white = make_shared<lambertian>(color(.73, .73, .73));
+    auto green = make_shared<lambertian>(color(.12, .45, .15));
+    auto pink = make_shared<lambertian>(color(.99, .75, .80));
+    auto light = make_shared<diffuse_light>(color(15, 15, 15));
+    auto glass = make_shared<dielectric>(1.5);
+    auto blue_metal = make_shared<metal>(color(.54, .81, .94), 0.5);
+
+    world.add(make_shared<quad>(point3(555, 0, 0), vec3(0, 555, 0), vec3(0, 0, 555), green));
+    world.add(make_shared<quad>(point3(0, 0, 0), vec3(0, 555, 0), vec3(0, 0, 555), red));
+    world.add(make_shared<quad>(point3(343, 554, 332), vec3(-130, 0, 0), vec3(0, 0, -105), light));
+    world.add(make_shared<quad>(point3(0, 0, 0), vec3(555, 0, 0), vec3(0, 0, 555), white));
+    world.add(make_shared<quad>(point3(555, 555, 555), vec3(-555, 0, 0), vec3(0, 0, -555), white));
+    world.add(make_shared<quad>(point3(0, 0, 555), vec3(555, 0, 0), vec3(0, 555, 0), white));
+
+    world.add(make_shared<sphere>(point3(350, 40, 100), 40, glass));
+
+    shared_ptr<hittable> bunny = parseOBJ("./models/bunny_reduced_8x.obj", pink, 1600);
+    bunny = make_shared<rotate_y>(bunny, 180);
+    bunny = make_shared<translate>(bunny, vec3(160, -60, 230));
+    world.add(bunny);
+
+    shared_ptr<hittable> box1 = box(point3(0, 0, 0), point3(165, 330, 165), blue_metal);
+    box1 = make_shared<rotate_y>(box1, 20);
+    box1 = make_shared<translate>(box1, vec3(265, 0, 350));
+    world.add(box1);
+
+    world = hittable_list(make_shared<bvh_node>(world));
+
+    camera cam;
+
+    cam.aspect_ratio = 1.0;
+    cam.image_width = 600;
+    cam.samples_per_pixel = 10;
+    cam.max_samples_per_pixel = 50;
+    cam.min_samples_per_pixel = 25;
+    cam.max_depth = 5;
+    cam.background = color(0.01, 0.01, 0.01);
 
     cam.vfov = 40;
     cam.lookfrom = point3(278, 278, -760);
@@ -251,12 +303,14 @@ void cornell_box_bunny() {
 }
 
 int main() {
-    switch (1) {
+    switch (2) {
         case 1:
             cornell_box_bunny();
+            break;
+        case 2:
+            cornell_box_bunny_demo();
             break;
         default:
             default_scene();
     }
-    
 }

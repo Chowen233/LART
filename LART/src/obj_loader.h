@@ -12,6 +12,8 @@ inline std::shared_ptr<hittable_list> parseOBJ(const std::string filePath, share
 		return std::make_shared<hittable_list>();
 	}
 
+    std::cerr << "Opened OBJ file : " << filePath << std::endl;
+
 	std::string line;
 	std::vector<point3> verts;
 	auto faces = std::make_shared<hittable_list>();
