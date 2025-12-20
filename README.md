@@ -15,8 +15,8 @@
 ### Built With
 This project is built with following third parties.
 * [stb_image](https://github.com/nothings/stb) for image I/O
-* [openmp](https://github.com/openmp) for multithread rendering
-* [oidn](https://github.com/RenderKit/oidn) for render result denoising
+* [OpenMP](https://github.com/openmp) for multithread rendering
+* [OIDN](https://github.com/RenderKit/oidn) for render result denoising
 
 ## Getting Started
 
