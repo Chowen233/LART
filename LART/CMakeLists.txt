@@ -32,7 +32,7 @@ find_package(OpenMP REQUIRED)
 target_link_libraries(LART PRIVATE OpenMP::OpenMP_CXX)
 
 # OIDN 配置
-set(OIDN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/external/oidn")
+set(OIDN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/thirdparty/oidn")
 
 if(EXISTS ${OIDN_DIR})
     message(STATUS "Found OIDN at: ${OIDN_DIR}")
@@ -50,16 +50,16 @@ if(EXISTS ${OIDN_DIR})
         add_custom_command(TARGET LART POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E echo "Copying OIDN DLLs..."
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${OIDN_DIR}/bin/OpenImageDenoise.dll"
+                "${OIDN_DIR}/binary/OpenImageDenoise.dll"
                 "$<TARGET_FILE_DIR:LART>"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${OIDN_DIR}/bin/OpenImageDenoise_core.dll"
+                "${OIDN_DIR}/binary/OpenImageDenoise_core.dll"
                 "$<TARGET_FILE_DIR:LART>"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${OIDN_DIR}/bin/OpenImageDenoise_device_cpu.dll"
+                "${OIDN_DIR}/binary/OpenImageDenoise_device_cpu.dll"
                 "$<TARGET_FILE_DIR:LART>"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${OIDN_DIR}/bin/tbb12.dll"
+                "${OIDN_DIR}/binary/tbb12.dll"
                 "$<TARGET_FILE_DIR:LART>"
             COMMENT "Copying OIDN DLLs to output directory"
         )
