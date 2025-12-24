@@ -18,12 +18,12 @@ set(SOURCE_LART
   src/sphere.h
   src/hittable_list.h
   src/interval.h
-  src/camara.h
+  src/camera.h
   src/material.h
   src/aabb.h
   src/quad.h
   src/obj_loader.h
- )
+  src/denoiser.h)
 
 add_executable(LART ${EXTERNAL} ${SOURCE_LART})
 

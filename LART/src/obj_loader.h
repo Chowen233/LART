@@ -8,11 +8,11 @@
 inline std::shared_ptr<hittable_list> parseOBJ(const std::string filePath, shared_ptr<material> mat, double scale) {
 	std::ifstream fileStream(filePath);
 	if (!fileStream.is_open()) {
-		std::cerr << "Failed to open OBJ file: " << filePath << std::endl;
+		std::cerr << "Failed to open OBJ file: " << filePath << std::endl << std::endl;
 		return std::make_shared<hittable_list>();
 	}
 
-    std::cerr << "Opened OBJ file : " << filePath << std::endl;
+    std::clog << "Opened OBJ file : " << filePath << std::endl << std::endl;
 
 	std::string line;
 	std::vector<point3> verts;

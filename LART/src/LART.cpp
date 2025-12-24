@@ -3,7 +3,7 @@
 #include "LART.h"
 
 #include "bvh.h"
-#include "camara.h"
+#include "camera.h"
 #include "hittable.h"
 #include "hittable_list.h"
 #include "material.h"
@@ -285,10 +285,10 @@ void cornell_box_bunny_demo() {
     camera cam;
 
     cam.aspect_ratio = 1.0;
-    cam.image_width = 600;
+    cam.image_width = 800;
     cam.samples_per_pixel = 10;
-    cam.max_samples_per_pixel = 50;
-    cam.min_samples_per_pixel = 25;
+    cam.max_samples_per_pixel = 80;
+    cam.min_samples_per_pixel = 40;
     cam.max_depth = 5;
     cam.background = color(0.01, 0.01, 0.01);
 

@@ -4,10 +4,10 @@
 #include "hittable.h"
 #include "material.h"
 
-#include "OpenImageDenoise/oidn.h"
+#include "progress_bar.h"
+#include "denoiser.h"
 
 #include <vector>
-#include <chrono>
 #include <omp.h>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -15,8 +15,8 @@
 
 class camera {
   public:
-	double aspect_ratio = 1.0;  // Ratio of image width over height
-	int    image_width = 100;  // Rendered image width in pixel count
+    double aspect_ratio = 1.0;  // Ratio of image width over height
+    int    image_width = 100;  // Rendered image width in pixel count
     int    samples_per_pixel = 10;   // Count of random samples for each pixel
     int    max_depth = 10;   // Maximum number of ray bounces into scene
     color  background;               // Scene background color
@@ -35,24 +35,18 @@ class camera {
     void render(const hittable& world) {
         initialize();
 
-        int pixel_cnt = image_width * image_height;
-        std::vector<unsigned char> image_color(pixel_cnt * 3);
-        std::vector<unsigned char> image_albedo(pixel_cnt * 3);
-        std::vector<unsigned char> image_normal(pixel_cnt * 3);
+        int pixel_count = image_width * image_height;
+        std::vector<unsigned char> image_color(pixel_count * 3);
+        /*std::vector<unsigned char> image_albedo(pixel_count * 3);
+        std::vector<unsigned char> image_normal(pixel_count * 3);*/
 
-        std::vector<float> color_buffer(pixel_cnt * 3);
-        std::vector<float> albedo_buffer(pixel_cnt * 3);
-        std::vector<float> normal_buffer(pixel_cnt * 3);
+        std::vector<float> color_buffer(pixel_count * 3);
+        std::vector<float> albedo_buffer(pixel_count * 3);
+        std::vector<float> normal_buffer(pixel_count * 3);
 
-        auto start = std::chrono::high_resolution_clock::now();
+        progress_bar bar(image_height);
 
-        const std::string red = "\033[31m";    // 红色
-        const std::string green = "\033[32m";  // 绿色
-        const std::string bold = "\033[1m";    // 加粗
-        const std::string reset = "\033[0m";   // 重置颜色
-        const std::string cursor = "\033[1F";  // 移动光标
-
-#pragma omp parallel for schedule(dynamic)
+        #pragma omp parallel for schedule(dynamic)
         for (int j = 0; j < image_height; j++) {
             for (int i = 0; i < image_width; i++) {
                 color pixel_color (0, 0, 0);
@@ -66,36 +60,26 @@ class camera {
                     pixel_normal += normal;
                 }
 
-                int sample_cnt = 0;
+                int sample_count = 0;
 
                 for (int sample = 0; sample < max_samples_per_pixel; sample++) {
                     ray r = get_ray(i, j);
                     color color_tmp = ray_color(r, max_depth, world);
-                    /*if (color_tmp[0] > 0.000001 ||
-                        color_tmp[1] > 0.000001 ||
-                        color_tmp[2] > 0.000001) {
-                        if (++sample_cnt >= min_samples_per_pixel) {
-                            total_sample_cnt += sample;
-                            break;
-                        }
-                    }*/
                     if (color_tmp[0] != 0 ||
                         color_tmp[1] != 0 ||
                         color_tmp[2] != 0) {
                         pixel_color += color_tmp;
-                        if (++sample_cnt >= min_samples_per_pixel) {
-                            total_sample_cnt += sample + 1;
+                        if (++sample_count >= min_samples_per_pixel) {
+                            total_sample_count += sample + 1;
                             break;
                         }
                     }
                 }
 
-                //sample_cnt = sample_cnt == 0 ? 1 : sample_cnt;
-
-                if (sample_cnt < min_samples_per_pixel) {
-                    if (sample_cnt == 0)
-                        sample_cnt = 1;
-                    total_sample_cnt += max_samples_per_pixel;
+                if (sample_count < min_samples_per_pixel) {
+                    if (sample_count == 0)
+                        sample_count = 1;
+                    total_sample_count += max_samples_per_pixel;
                 }
 
                 int idx = (j * image_width + i) * 3;
@@ -106,103 +90,29 @@ class camera {
                     buffer[idx + 2] = pixel[2];
                 };
 
-                fill_buffer(color_buffer, 1.0 / sample_cnt * pixel_color);
+                fill_buffer(color_buffer, 1.0 / sample_count * pixel_color);
                 fill_buffer(albedo_buffer, pixel_samples_scale * pixel_albedo);
                 fill_buffer(normal_buffer, pixel_samples_scale * (0.5 * pixel_normal + color(0.5, 0.5, 0.5)));
 
-                write_color(1.0 / sample_cnt * pixel_color, image_color, idx);
+                /*write_color(1.0 / sample_count * pixel_color, image_color, idx);
                 write_color(pixel_samples_scale * pixel_albedo, image_albedo, idx);
-                write_color(pixel_samples_scale * (0.5 * pixel_normal + color(0.5, 0.5, 0.5)), image_normal, idx);
+                write_color(pixel_samples_scale * (0.5 * pixel_normal + color(0.5, 0.5, 0.5)), image_normal, idx);*/
             }
 
-            progress++;
-
-            auto now = std::chrono::high_resolution_clock::now();
-            auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(now - start);
-            double elapsed_sec = elapsed.count();
-            double avg_per_line = elapsed_sec / double(progress); // seconds per completed line
-            double remaining_sec = avg_per_line * double(image_height - progress);
-
-            // 构造进度条
-            const int BAR_WIDTH = 50;
-            int filled = int(std::round(double(progress) / double(image_height) * BAR_WIDTH));
-            if (filled < 0) filled = 0;
-            if (filled > BAR_WIDTH) filled = BAR_WIDTH;
-
-            std::ostringstream oss;
-            oss << cursor << "\rRendering: [" << red << bold;
-            for (int b = 0; b < BAR_WIDTH; ++b) {
-                if (b < filled) oss << '=';
-                else oss << ' ';
-            }
-            oss << reset << "] ";
-
-            int percent = int(std::round(100.0 * double(progress) / double(image_height)));
-            if (percent < 0) percent = 0;
-            if (percent > 100) percent = 100;
-            oss << percent << "%\n";
-
-            // 时间格式化为 mm:ss 或 ss
-            auto fmt_time = [](double sec)->std::string {
-                if (sec < 0) sec = 0;
-                int s = int(std::round(sec));
-                int m = s / 60;
-                s = s % 60;
-                std::ostringstream tss;
-                if (m > 0) tss << m << "m ";
-                tss << s << "s remaining         ";
-                return tss.str();
-                };
-
-            oss << fmt_time(remaining_sec);
-
-            // 同步打印，防止多线程输出交错
             #pragma omp critical
             {
-                std::clog << oss.str() << std::flush;
+                bar.update(++progress);
             }
         }
 
-        auto end = std::chrono::high_resolution_clock::now();
-        auto total = std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
+        bar.end(1.0 * total_sample_count / pixel_count);
 
-        std::clog << cursor << "\rRendering: [" << green << bold;
-        for (int i = 0; i < 50; ++i) std::clog << '=';
-        std::clog << reset << "] 100% Done.\nTotal time: " << int(total.count()) << "s          \n";
-
-        std::clog << "average sample count = " << 1.0 * total_sample_cnt / pixel_cnt << "\n";
-
-        write_png("image_color.png", image_color);
+        /*write_png("image_color.png", image_color);
         write_png("image_albedo.png", image_albedo);
-        write_png("image_normal.png", image_normal);
+        write_png("image_normal.png", image_normal);*/
 
-        // 每个 vector 的大小是 width * height * 3 (RGB)
-
-        OIDNDevice device = oidnNewDevice(OIDN_DEVICE_TYPE_DEFAULT);
-        oidnCommitDevice(device);
-
-        OIDNFilter filter = oidnNewFilter(device, "RT"); // 使用 RT 过滤器
-
-        // 设置颜色缓冲区（输入和输出可以是同一个）
-        oidnSetSharedFilterImage(filter, "color", color_buffer.data(), OIDN_FORMAT_FLOAT3, image_width, image_height, 0, 0, 0);
-        oidnSetSharedFilterImage(filter, "output", color_buffer.data(), OIDN_FORMAT_FLOAT3, image_width, image_height, 0, 0, 0);
-        // 设置辅助缓冲区
-        oidnSetSharedFilterImage(filter, "albedo", albedo_buffer.data(), OIDN_FORMAT_FLOAT3, image_width, image_height, 0, 0, 0);
-        oidnSetSharedFilterImage(filter, "normal", normal_buffer.data(), OIDN_FORMAT_FLOAT3, image_width, image_height, 0, 0, 0);
-
-        oidnCommitFilter(filter);
-        oidnExecuteFilter(filter);
-
-        // 检查错误
-        const char* error;
-        if (oidnGetDeviceError(device, &error) != OIDN_ERROR_NONE)
-            std::cerr << "Denoiser Error: " << error << std::endl;
-
-        // 清理
-        oidnReleaseFilter(filter);
-        oidnReleaseDevice(device);
-
-        // 此时 color 中的数据已经被降噪后的结果覆盖
+        //OIDN denoise
+        denoise(color_buffer, albedo_buffer, normal_buffer, image_width, image_height);
 
         for (int i = 0; i < image_width * image_height; ++i) {
             int idx = i * 3;
@@ -225,7 +135,7 @@ class camera {
     vec3   defocus_disk_v;       // Defocus disk vertical radius
 
     int    progress = 0;
-    long long total_sample_cnt = 0;
+    long long total_sample_count = 0;
 
     void initialize() {
         image_height = int(image_width / aspect_ratio);
@@ -311,22 +221,9 @@ class camera {
         color color_from_scatter = attenuation * ray_color(scattered, depth - 1, world);
 
         return color_from_emission + color_from_scatter;
-
-        /*if (world.hit(r, interval(0.001, infinity), rec)) {
-            ray scattered;
-            color attenuation;
-            if (rec.mat->scatter(r, rec, attenuation, scattered))
-                return attenuation * ray_color(scattered, depth - 1, world);
-            return color(0, 0, 0);
-        }
-
-        vec3 unit_direction = unit_vector(r.direction());
-        auto a = 0.5 * (unit_direction.y() + 1.0);
-        //return (1.0 - a) * color(1.0, 1.0, 1.0) + a * color(0.5, 0.7, 1.0);
-        return color(1, 1, 1);*/
     }
 
-    //get albedo normal
+    // Get albedo and normal
     std::pair<color, vec3> ray_first_hit(const ray& r, const hittable& world) const {
 
         hit_record rec;
