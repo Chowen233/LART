@@ -92,7 +92,7 @@ class camera {
 
                 fill_buffer(color_buffer, 1.0 / sample_count * pixel_color);
                 fill_buffer(albedo_buffer, pixel_samples_scale * pixel_albedo);
-                fill_buffer(normal_buffer, pixel_samples_scale * (0.5 * pixel_normal + color(0.5, 0.5, 0.5)));
+                fill_buffer(normal_buffer, pixel_samples_scale * pixel_normal);
 
                 /*write_color(1.0 / sample_count * pixel_color, image_color, idx);
                 write_color(pixel_samples_scale * pixel_albedo, image_albedo, idx);
